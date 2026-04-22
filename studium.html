@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Studium — Study Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Josefin+Sans:wght@100;200;300;400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #161616;
+    --border: #222222;
+    --gold: #c9a96e;
+    --gold-dim: #8a6e3e;
+    --text: #e8e4dc;
+    --muted: #888888;
+    --muted2: #444444;
+    --danger: #c96e6e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Josefin Sans', sans-serif;
+    letter-spacing: 0.04em;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,10,0.93);
+    backdrop-filter: blur(12px);
+  }
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-weight: 300;
+    letter-spacing: 0.15em; color: var(--gold);
+  }
+  .nav-tabs { display: flex; gap: 2px; }
+  .nav-tab {
+    background: none; border: none; border-bottom: 1px solid transparent;
+    cursor: pointer; padding: 8px 20px;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 10px; font-weight: 300;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: #777777; transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .nav-total {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px; font-weight: 300;
+    color: var(--muted); font-style: italic; letter-spacing: 0.08em;
+  }
+  .nav-total span { color: var(--gold); }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── TIMER PAGE ── */
+  #page-timer {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding-top: 80px;
+    position: relative; overflow: hidden;
+  }
+  .ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(201,169,110,0.06);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .ring:nth-child(1) { width: 600px; height: 600px; }
+  .ring:nth-child(2) { width: 750px; height: 750px; border-color: rgba(201,169,110,0.03); }
+  .ring:nth-child(3) { width: 900px; height: 900px; border-color: rgba(201,169,110,0.015); }
+
+  @keyframes pulse-ring {
+    0%   { transform: translate(-50%,-50%) scale(1); opacity: 0.07; }
+    100% { transform: translate(-50%,-50%) scale(1.09); opacity: 0; }
+  }
+  #pulse-ring {
+    position: absolute; width: 600px; height: 600px; border-radius: 50%;
+    border: 1px solid var(--gold);
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: none; display: none;
+  }
+  #pulse-ring.active { display: block; animation: pulse-ring 2.5s ease-out infinite; }
+
+  .timer-label {
+    font-size: 10px; font-weight: 300;
+    letter-spacing: 0.35em; text-transform: uppercase;
+    color: #999999; margin-bottom: 32px;
+    position: relative; z-index: 1;
+  }
+  #timer-display {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(72px, 14vw, 148px);
+    font-weight: 300; letter-spacing: -0.02em;
+    color: var(--text); line-height: 1;
+    margin-bottom: 16px; user-select: none;
+    transition: color 0.4s; position: relative; z-index: 1;
+  }
+  #timer-display.running { color: var(--gold); }
+  .timer-sub {
+    font-size: 11px; font-weight: 300;
+    letter-spacing: 0.25em; color: #888888;
+    margin-bottom: 64px; font-style: italic;
+    position: relative; z-index: 1;
+  }
+
+  .timer-controls {
+    display: flex; gap: 40px; align-items: center;
+    margin-bottom: 72px; position: relative; z-index: 1;
+  }
+
+  .btn-circle {
+    background: none; cursor: pointer; border-radius: 50%;
+    width: 80px; height: 80px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .btn-play {
+    border: 1px solid var(--gold-dim);
+  }
+  .btn-play:hover { border-color: var(--gold); background: rgba(201,169,110,0.06); }
+  .btn-play svg { width: 28px; height: 28px; fill: var(--gold); }
+
+  .btn-save {
+    border: 1px solid var(--muted2);
+    gap: 3px;
+  }
+  .btn-save:hover { border-color: var(--gold-dim); background: rgba(201,169,110,0.04); }
+  .btn-save span {
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 8px; font-weight: 300;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: #777777; line-height: 1; transition: color 0.2s;
+  }
+  .btn-save:hover span { color: var(--gold); }
+
+  .btn-spacer { width: 80px; height: 80px; }
+
+  .session-subject {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 10px;
+    position: relative; z-index: 1;
+  }
+  .session-subject label {
+    font-size: 9px; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  #session-input {
+    background: none; border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-weight: 300; font-style: italic;
+    text-align: center; padding: 6px 16px;
+    width: 280px; outline: none;
+    transition: border-color 0.2s; letter-spacing: 0.05em;
+  }
+  #session-input:focus { border-color: var(--gold-dim); }
+  #session-input::placeholder { color: var(--muted); }
+
+  /* ── ANALYTICS / SESSIONS PAGES ── */
+  .inner-page {
+    padding: 100px 48px 60px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px; font-weight: 300; font-style: italic;
+    color: var(--text); margin-bottom: 8px;
+  }
+  .page-sub {
+    font-size: 10px; letter-spacing: 0.25em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 56px;
+  }
+
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 1px; background: var(--border); margin-bottom: 48px;
+  }
+  .stat-card { background: var(--surface); padding: 28px 32px; }
+  .stat-card .s-label {
+    font-size: 9px; letter-spacing: 0.28em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .stat-card .s-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 38px; font-weight: 300; color: var(--gold); line-height: 1;
+  }
+  .stat-card .s-unit { font-size: 11px; color: var(--muted); margin-left: 4px; }
+
+  .chart-tabs {
+    display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+  }
+  .chart-tab {
+    background: none; border: none; border-bottom: 1px solid transparent;
+    cursor: pointer; padding: 10px 24px; margin-bottom: -1px;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 9px; font-weight: 300;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); transition: color 0.2s;
+  }
+  .chart-tab:hover { color: var(--text); }
+  .chart-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .chart-container {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 32px; margin-bottom: 48px;
+  }
+  .chart-wrap { width: 100%; height: 200px; }
+  .chart-wrap svg { width: 100%; height: 100%; }
+  .chart-empty {
+    text-align: center; color: var(--muted);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-style: italic;
+    padding: 60px 0; letter-spacing: 0.08em;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 300; font-style: italic;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .section-sub {
+    font-size: 9px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 24px;
+  }
+
+  .sessions-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); }
+
+  .session-row {
+    background: var(--surface); padding: 18px 28px;
+    display: grid; grid-template-columns: 130px 1fr 90px 100px;
+    align-items: center; gap: 16px;
+    transition: background 0.15s;
+  }
+  .session-row:hover { background: var(--surface2); }
+  .session-row.editing { background: #171410; }
+
+  .s-date { font-size: 10px; letter-spacing: 0.1em; color: var(--muted); line-height: 1.6; }
+  .s-dur {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 300; color: var(--gold); text-align: right;
+  }
+  .s-subject { font-size: 13px; letter-spacing: 0.06em; color: var(--text); }
+  .s-subject-input {
+    background: none; border: none; border-bottom: 1px solid var(--gold-dim);
+    color: var(--text); font-family: 'Josefin Sans', sans-serif;
+    font-size: 13px; letter-spacing: 0.06em;
+    outline: none; width: 100%; padding: 2px 0;
+  }
+  .s-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .s-btn {
+    background: none; border: none; cursor: pointer;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; padding: 4px 8px; transition: color 0.2s;
+  }
+  .s-btn.edit { color: var(--muted); }
+  .s-btn.edit:hover { color: var(--gold); }
+  .s-btn.save-edit { color: var(--gold); }
+  .s-btn.del { color: var(--muted2); }
+  .s-btn.del:hover { color: var(--danger); }
+
+  .no-sessions {
+    text-align: center; padding: 60px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-style: italic;
+    color: var(--muted); background: var(--surface);
+  }
+
+  .export-row {
+    display: flex; gap: 12px; margin-bottom: 32px;
+  }
+  .export-btn {
+    background: none; border: 1px solid var(--border); cursor: pointer;
+    padding: 10px 20px;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 9px; font-weight: 300;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); transition: all 0.2s;
+  }
+  .export-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+  @media (max-width: 700px) {
+    nav { padding: 16px 20px; }
+    .inner-page { padding: 90px 20px 40px; }
+    .stats-row { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .session-row { grid-template-columns: 1fr 1fr; }
+    .s-actions { grid-column: span 2; }
+    #timer-display { font-size: 18vw; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">studium</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('timer')">Timer</button>
+    <button class="nav-tab" onclick="showPage('analytics')">Analytics</button>
+    <button class="nav-tab" onclick="showPage('sessions')">Sessions</button>
+  </div>
+  <div class="nav-total">Total: <span id="nav-total">0h 0m</span></div>
+</nav>
+
+<!-- TIMER PAGE -->
+<div id="page-timer" class="page active">
+  <div class="ring"></div>
+  <div class="ring"></div>
+  <div class="ring"></div>
+  <div id="pulse-ring"></div>
+
+  <div class="timer-label" id="timer-label">ready to study</div>
+  <div id="timer-display">00:00:00</div>
+  <div class="timer-sub" id="timer-sub">today · 0h 0m</div>
+
+  <div class="timer-controls">
+    <button class="btn-circle btn-save" onclick="saveProgress()" title="Save session">
+      <span>save</span>
+      <span>progress</span>
+    </button>
+
+    <button class="btn-circle btn-play" id="btn-play" onclick="togglePlay()">
+      <svg id="play-icon" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>
+    </button>
+
+    <div class="btn-spacer"></div>
+  </div>
+
+  <div class="session-subject">
+    <label>what are you studying?</label>
+    <input id="session-input" type="text" placeholder="e.g. Calculus, Biology..." />
+  </div>
+</div>
+
+<!-- ANALYTICS PAGE -->
+<div id="page-analytics" class="page">
+  <div class="inner-page">
+    <div class="page-title">Your Progress</div>
+    <div class="page-sub">study analytics overview</div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="s-label">Today</div>
+        <div class="s-val" id="stat-today">0<span class="s-unit">h</span> 0<span class="s-unit">m</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">This Week</div>
+        <div class="s-val" id="stat-week">0<span class="s-unit">h</span> 0<span class="s-unit">m</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">All Time</div>
+        <div class="s-val" id="stat-total">0<span class="s-unit">h</span> 0<span class="s-unit">m</span></div>
+      </div>
+    </div>
+
+    <div class="chart-tabs">
+      <button class="chart-tab active" onclick="setRange('day')">Day</button>
+      <button class="chart-tab" onclick="setRange('week')">Week</button>
+      <button class="chart-tab" onclick="setRange('month')">Month</button>
+    </div>
+    <div class="chart-container">
+      <div class="chart-wrap" id="chart-wrap"></div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-title">Recent Activity</div>
+        <div class="section-sub">last 5 sessions</div>
+        <div id="recent-list" class="sessions-list"></div>
+      </div>
+      <div>
+        <div class="section-title">Top Subjects</div>
+        <div class="section-sub">by total time</div>
+        <div id="top-subjects" class="sessions-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SESSIONS PAGE -->
+<div id="page-sessions" class="page">
+  <div class="inner-page">
+    <div class="page-title">All Sessions</div>
+    <div class="page-sub" id="sessions-sub">0 sessions recorded</div>
+
+    <div class="export-row">
+      <button class="export-btn" onclick="exportData()">Export JSON</button>
+      <button class="export-btn" onclick="document.getElementById('import-input').click()">Import JSON</button>
+      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)" />
+    </div>
+
+    <div id="sessions-list" class="sessions-list"></div>
+  </div>
+</div>
+
+<script>
+  // ── STATE ──
+  const STORAGE_KEY = 'studium_sessions_v1';
+  let sessions = [];
+  let running = false;
+  let elapsed = 0;
+  let sessionStart = null;
+  let intervalId = null;
+  let chartRange = 'week';
+
+  // ── PERSISTENCE ──
+  function loadSessions() {
+    try { sessions = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { sessions = []; }
+  }
+  function saveSessions() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }
+
+  // ── FORMATTING ──
+  function fmt(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtHM(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  }
+  function fmtDate(ts) {
+    return new Date(ts).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  }
+  function fmtTime(ts) {
+    return new Date(ts).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  }
+  function dateKey(ts) {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+  function statVal(secs) {
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+    return `${h}<span class="s-unit">h</span> ${m}<span class="s-unit">m</span>`;
+  }
+
+  // ── TIMER ──
+  function togglePlay() {
+    if (!running) {
+      if (elapsed === 0) sessionStart = Date.now();
+      else sessionStart = Date.now() - elapsed * 1000;
+      running = true;
+      intervalId = setInterval(() => {
+        elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+        updateTimerUI();
+      }, 500);
+    } else {
+      running = false;
+      clearInterval(intervalId);
+    }
+    updateTimerUI();
+  }
+
+  function saveProgress() {
+    if (elapsed < 5) { running = false; clearInterval(intervalId); elapsed = 0; updateTimerUI(); return; }
+    running = false;
+    clearInterval(intervalId);
+    const subj = document.getElementById('session-input').value.trim() || 'Study Session';
+    sessions.unshift({
+      id: Date.now(),
+      start: sessionStart || Date.now() - elapsed * 1000,
+      duration: elapsed,
+      subject: subj
+    });
+    saveSessions();
+    elapsed = 0;
+    sessionStart = null;
+    document.getElementById('session-input').value = '';
+    updateTimerUI();
+    updateAll();
+  }
+
+  function updateTimerUI() {
+    const disp = document.getElementById('timer-display');
+    const label = document.getElementById('timer-label');
+    const sub = document.getElementById('timer-sub');
+    const playIcon = document.getElementById('play-icon');
+    const pulse = document.getElementById('pulse-ring');
+
+    disp.textContent = fmt(elapsed);
+    disp.className = running ? 'running' : '';
+    pulse.className = running ? 'active' : '';
+
+    if (running) label.textContent = 'session in progress';
+    else if (elapsed > 0) label.textContent = 'session paused';
+    else label.textContent = 'ready to study';
+
+    const todayS = sessions.filter(s => dateKey(s.start) === dateKey(Date.now())).reduce((a,s)=>a+s.duration,0);
+    const live = running || elapsed > 0 ? elapsed : 0;
+    sub.textContent = `today · ${fmtHM(todayS + (running ? live : 0))}`;
+
+    if (running) {
+      playIcon.innerHTML = '<rect x="5" y="4" width="4" height="16" rx="1"/><rect x="15" y="4" width="4" height="16" rx="1"/>';
+    } else {
+      playIcon.innerHTML = '<path d="M6 4l14 8-14 8V4z"/>';
+    }
+  }
+
+  // ── ANALYTICS ──
+  function updateStats() {
+    const now = Date.now();
+    const todayS = sessions.filter(s => dateKey(s.start) === dateKey(now)).reduce((a,s)=>a+s.duration,0);
+    const weekS = sessions.filter(s => now - s.start < 7*86400000).reduce((a,s)=>a+s.duration,0);
+    const totalS = sessions.reduce((a,s)=>a+s.duration,0);
+
+    document.getElementById('stat-today').innerHTML = statVal(todayS);
+    document.getElementById('stat-week').innerHTML = statVal(weekS);
+    document.getElementById('stat-total').innerHTML = statVal(totalS);
+    document.getElementById('nav-total').textContent = fmtHM(totalS);
+  }
+
+  function setRange(r) {
+    chartRange = r;
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    renderChart();
+  }
+
+  function renderChart() {
+    const wrap = document.getElementById('chart-wrap');
+    if (sessions.length === 0) {
+      wrap.innerHTML = '<div class="chart-empty">No sessions recorded yet</div>';
+      return;
+    }
+
+    const now = new Date();
+    let buckets = [];
+
+    if (chartRange === 'day') {
+      buckets = Array.from({length:24}, (_,i) => {
+        const h = (now.getHours() - 23 + i + 24) % 24;
+        const lbl = h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h-12}p`;
+        return { label: lbl, secs: 0 };
+      });
+      const cutoff = Date.now() - 24*3600*1000;
+      sessions.filter(s => s.start >= cutoff).forEach(s => {
+        const h = new Date(s.start).getHours();
+        const idx = (h - now.getHours() + 23 + 24) % 24;
+        if (idx >= 0 && idx < 24) buckets[idx].secs += s.duration;
+      });
+    } else if (chartRange === 'week') {
+      buckets = Array.from({length:7}, (_,i) => {
+        const d = new Date(now); d.setDate(d.getDate() - 6 + i);
+        return { label: d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase(), secs: 0 };
+      });
+      sessions.forEach(s => {
+        const diff = Math.floor((now - s.start) / 86400000);
+        if (diff >= 0 && diff < 7) buckets[6 - diff].secs += s.duration;
+      });
+    } else {
+      buckets = Array.from({length:6}, (_,i) => {
+        const d = new Date(now); d.setDate(d.getDate() - 29 + i*5);
+        return { label: d.toLocaleDateString('en-US',{month:'short',day:'numeric'}), secs: 0 };
+      });
+      sessions.forEach(s => {
+        const diff = Math.floor((now - s.start) / 86400000);
+        if (diff >= 0 && diff < 30) {
+          const idx = Math.min(5, Math.floor((29 - diff) / 5));
+          buckets[idx].secs += s.duration;
+        }
+      });
+    }
+
+    const maxS = Math.max(...buckets.map(b=>b.secs), 1);
+    const W = 800, H = 160, padT = 10, padB = 28;
+    const gap = W / buckets.length;
+    const bw = gap * 0.55;
+
+    let bars = '';
+    let labels = '';
+    let lines = '';
+
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+      const y = padT + (1 - f) * H;
+      lines += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#222" stroke-width="1"/>`;
+    });
+
+    buckets.forEach((b, i) => {
+      const bh = (b.secs / maxS) * H;
+      const x = i * gap + gap / 2 - bw / 2;
+      const y = padT + H - bh;
+      const cx = i * gap + gap / 2;
+      bars += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="2" fill="#8a6e3e" class="chart-bar">
+        <title>${b.label}: ${fmtHM(b.secs)}</title>
+      </rect>`;
+      labels += `<text x="${cx}" y="${H + padT + 18}" text-anchor="middle" fill="#888" font-family="'Josefin Sans',sans-serif" font-size="9" letter-spacing="1">${b.label}</text>`;
+    });
+
+    wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H + padB}" preserveAspectRatio="none" style="width:100%;height:100%">
+      ${lines}${bars}${labels}
+    </svg>`;
+
+    // hover effect
+    wrap.querySelectorAll('.chart-bar').forEach(bar => {
+      bar.addEventListener('mouseenter', () => bar.setAttribute('fill','#c9a96e'));
+      bar.addEventListener('mouseleave', () => bar.setAttribute('fill','#8a6e3e'));
+    });
+  }
+
+  function renderRecent() {
+    const el = document.getElementById('recent-list');
+    const top5 = sessions.slice(0, 5);
+    if (!top5.length) { el.innerHTML = '<div class="no-sessions">No sessions yet</div>'; return; }
+    el.innerHTML = top5.map(s => `
+      <div class="session-row">
+        <div class="s-date">${fmtDate(s.start)}<br><span style="font-size:9px;opacity:.6">${fmtTime(s.start)}</span></div>
+        <div class="s-subject">${s.subject}</div>
+        <div class="s-dur">${fmtHM(s.duration)}</div>
+        <div></div>
+      </div>`).join('');
+  }
+
+  function renderTopSubjects() {
+    const el = document.getElementById('top-subjects');
+    const map = {};
+    sessions.forEach(s => { map[s.subject] = (map[s.subject]||0) + s.duration; });
+    const top = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if (!top.length) { el.innerHTML = '<div class="no-sessions">No sessions yet</div>'; return; }
+    el.innerHTML = top.map(([subj, secs]) => `
+      <div class="session-row">
+        <div class="s-subject" style="grid-column:span 2">${subj}</div>
+        <div class="s-dur">${fmtHM(secs)}</div>
+        <div></div>
+      </div>`).join('');
+  }
+
+  function renderSessionsList() {
+    const el = document.getElementById('sessions-list');
+    const sub = document.getElementById('sessions-sub');
+    sub.textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''} recorded — click edit to annotate`;
+    if (!sessions.length) { el.innerHTML = '<div class="no-sessions">No sessions recorded yet.<br>Start the timer to begin tracking.</div>'; return; }
+    el.innerHTML = sessions.map(s => `
+      <div class="session-row" id="row-${s.id}">
+        <div class="s-date">${fmtDate(s.start)}<br><span style="font-size:9px;opacity:.6">${fmtTime(s.start)}</span></div>
+        <div class="s-subject" id="subj-${s.id}">${s.subject}</div>
+        <div class="s-dur">${fmtHM(s.duration)}</div>
+        <div class="s-actions">
+          <button class="s-btn edit" onclick="startEdit(${s.id})">Edit</button>
+          <button class="s-btn del" onclick="deleteSession(${s.id})">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function startEdit(id) {
+    const s = sessions.find(x => x.id === id);
+    if (!s) return;
+    const row = document.getElementById(`row-${id}`);
+    const subjEl = document.getElementById(`subj-${id}`);
+    row.classList.add('editing');
+    subjEl.innerHTML = `<input class="s-subject-input" id="edit-input-${id}" value="${s.subject}" onkeydown="if(event.key==='Enter')saveEdit(${id})" />`;
+    document.getElementById(`edit-input-${id}`).focus();
+    row.querySelector('.s-btn.edit').textContent = 'Save';
+    row.querySelector('.s-btn.edit').className = 's-btn save-edit';
+    row.querySelector('.s-btn.save-edit').setAttribute('onclick', `saveEdit(${id})`);
+  }
+
+  function saveEdit(id) {
+    const input = document.getElementById(`edit-input-${id}`);
+    const val = input ? input.value.trim() : '';
+    const idx = sessions.findIndex(x => x.id === id);
+    if (idx !== -1 && val) sessions[idx].subject = val;
+    saveSessions();
+    renderSessionsList();
+  }
+
+  function deleteSession(id) {
+    sessions = sessions.filter(x => x.id !== id);
+    saveSessions();
+    updateAll();
+  }
+
+  // ── EXPORT / IMPORT ──
+  function exportData() {
+    const blob = new Blob([JSON.stringify(sessions, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'studium-backup.json';
+    a.click();
+  }
+  function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (Array.isArray(imported)) {
+          sessions = imported;
+          saveSessions();
+          updateAll();
+          alert(`Imported ${imported.length} sessions.`);
+        }
+      } catch { alert('Invalid file.'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  // ── PAGE SWITCHING ──
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`page-${name}`).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(t => {
+      if (t.textContent.toLowerCase() === name) t.classList.add('active');
+    });
+    if (name === 'analytics') { updateStats(); renderChart(); renderRecent(); renderTopSubjects(); }
+    if (name === 'sessions') renderSessionsList();
+  }
+
+  function updateAll() {
+    updateStats();
+    renderChart();
+    renderRecent();
+    renderTopSubjects();
+    renderSessionsList();
+  }
+
+  // ── INIT ──
+  loadSessions();
+  updateTimerUI();
+  updateStats();
+</script>
+</body>
+</html>
